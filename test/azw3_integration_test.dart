@@ -185,6 +185,40 @@ void main() {
       }
     });
 
+    test('XhtmlSplitter produces one .xhtml part per skeleton', () {
+      final rawML = decompressBookText(
+        pdb: pdb,
+        palmDoc: kf8.palmDoc,
+        mobi: kf8.mobi,
+      );
+      final fdstRec = pdb.records[kf8.mobi.fdstRecord! + kf8.recordOffset];
+      final fdst = FdstTable.parse(fdstRec.data);
+      final flows = BookFlows.split(rawML, fdst);
+      final skel = SkeletonTable.parse(pdb, kf8.mobi);
+      final frag = FragmentTable.parse(pdb, kf8.mobi);
+
+      final parts = XhtmlSplitter.split(
+        primaryFlow: flows.primaryHtml!.bytes,
+        skeletons: skel,
+        fragments: frag,
+      );
+
+      // 70 skeletons → 70 XHTML parts.
+      expect(parts, hasLength(skel.entries.length));
+      // Spliced parts together should equal the primary flow length —
+      // splicing reassembles the same bytes, just regrouped.
+      var totalLen = 0;
+      for (final p in parts) {
+        totalLen += p.bytes.length;
+      }
+      expect(totalLen, flows.primaryHtml!.bytes.length);
+      // Filenames are sequential, zero-padded, no gaps.
+      for (var i = 0; i < parts.length; i++) {
+        expect(parts[i].filename,
+            'part${i.toString().padLeft(4, '0')}.xhtml');
+      }
+    });
+
     test('exactly one RESC record is present and parses to OPF XML', () {
       // Walk the resource block looking for the RESC magic.
       final rescIndices = <int>[];
