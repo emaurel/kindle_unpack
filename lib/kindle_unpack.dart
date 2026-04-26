@@ -5,6 +5,7 @@
 library;
 
 export 'src/decompress/book_text.dart';
+export 'src/decompress/huff_cdic.dart';
 export 'src/decompress/palmdoc.dart';
 export 'src/decompress/trailing_data.dart';
 export 'src/headers/exth.dart';

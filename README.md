@@ -78,7 +78,7 @@ Each phase is meant to land independently with tests:
       Decompress text records into a single HTML string.
 - [x] **Phase 5 — Image extraction.** Walk image records, return
       `{name: bytes}`. Handle the cover record specially.
-- [ ] **Phase 6 — HUFF/CDIC decompression.** Huffman + dictionary-coded
+- [x] **Phase 6 — HUFF/CDIC decompression.** Huffman + dictionary-coded
       compression used in some MOBI files. Larger than PalmDOC.
 - [ ] **Phase 7 — KF8 detection + section extraction.** Identify KF8
       portion in dual-format files via boundary record. Handle FDST table.
