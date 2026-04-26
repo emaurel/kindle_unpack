@@ -1,43 +1,97 @@
 # kindle_unpack
 
-A pure-Dart library for reading Amazon Kindle ebook files (MOBI / AZW / AZW3 / KF8).
-Port of [KindleUnpack](https://github.com/kevinhendricks/KindleUnpack) (Python).
-
-> **Status:** planning. No code yet — see the roadmap below.
+A pure-Dart library for reading Amazon Kindle ebook files
+(MOBI / AZW / AZW3 / KF8) and re-emitting them as EPUB 3.
+Port of [KindleUnpack](https://github.com/kevinhendricks/KindleUnpack)
+(Python).
 
 ## Why
 
-The Dart / Flutter ecosystem has solid EPUB support (`epubx`) and PDF support
-(`pdfx`, `pdfium` bindings), but nothing for Kindle's MOBI-derived formats.
-Books bought from non-Kindle stores and saved as `.azw3`, classic `.mobi`
-files from Project Gutenberg, and stripped-DRM library archives all sit there
-unreadable by any Flutter app today. The only way to view them on a Flutter
-device right now is to convert them on a desktop with Calibre first.
+The Dart / Flutter ecosystem has solid EPUB support (`epubx`) and PDF
+support (`pdfx`, `pdfium` bindings), but nothing for Kindle's
+MOBI-derived formats. Books bought from non-Kindle stores and saved as
+`.azw3`, classic `.mobi` files from Project Gutenberg, and stripped-DRM
+library archives all sit there unreadable by any Flutter app today.
+The only way to view them on a Flutter device right now is to convert
+them on a desktop with Calibre first.
 
-This library aims to plug that hole: feed it bytes, get back HTML +
-metadata + images. A higher-level renderer (or an EPUB-emitting wrapper)
-can sit on top.
+This library plugs that hole: feed it bytes, get back HTML + metadata
++ images, or skip straight to a packaged EPUB.
 
-## Scope
+## Install
 
-### What this will support
-- **MOBI** (PalmDOC-compressed, `.mobi`)
-- **AZW** (Mobi-7 with Amazon DRM section *headers* — but only files that
-  are not encrypted)
-- **AZW3 / KF8** (the modern Kindle format, both standalone and dual MOBI/KF8)
-- **HUFF/CDIC** decompression (used in some MOBI files)
-- Cover and embedded image extraction
-- Metadata via EXTH headers (title, author, publisher, description, ASIN, etc.)
-- HTML output preserving structure
-- EPUB output as a higher-level wrapper
+```yaml
+dependencies:
+  kindle_unpack: ^0.1.0
+```
 
-### What this will NOT support
-- **DRM removal.** Files encrypted with Amazon's PID/serial-key DRM stay
-  encrypted. There are tools that remove Kindle DRM; this library will not
-  be one of them. If a file is encrypted, parsing returns an error.
-- **Topaz / .tpz / .azw1.** Topaz is a separate, more obscure format.
-  Out of scope for v1.
-- **Kindle Print Replica (KPR).** It's just wrapped PDF; use a PDF library.
+## Usage
+
+The one-shot path — bytes in, EPUB bytes out:
+
+```dart
+import 'dart:io';
+import 'package:kindle_unpack/kindle_unpack.dart';
+
+void main() {
+  final bytes = File('book.azw3').readAsBytesSync();
+  final book = KindleBook.fromBytes(bytes);
+  File('book.epub').writeAsBytesSync(book.toEpub());
+}
+```
+
+Or work with the parsed pieces directly:
+
+```dart
+final book = KindleBook.fromBytes(bytes);
+
+book.title;                      // String — EXTH 503 / fullName
+book.exth?.authors;              // List<String>?
+book.exth?.asin;                 // String?
+book.format;                     // KindleFormat.kf8Only / mobi7Only / combo
+
+book.parts;                      // List<XhtmlPart> — reconstructed HTML
+book.images.cover;               // ExtractedImage? — bytes + format
+book.images.toMap();             // Map<String, Uint8List> — name → bytes
+book.flows;                      // BookFlows? — KF8 only (HTML / CSS / …)
+book.fonts;                      // List<FontResource> — already deobfuscated
+
+book.rawML;                      // Uint8List — full decompressed text
+```
+
+Each layer is also exposed on its own — `PdbFile.parse`,
+`PalmDocHeader.parse`, `MobiHeader.parse`, `ExthHeader.parse`,
+`decompressBookText`, `BookFlows.split`, `XhtmlSplitter.split`, etc. See
+the source under `lib/src/` for the typed parsers.
+
+## What this supports
+
+- **MOBI** (PalmDOC-compressed `.mobi`)
+- **AZW** (Mobi-7 with the Amazon DRM section header zeroed out)
+- **AZW3 / KF8** — standalone and dual MOBI/KF8 files
+- **HUFF/CDIC** decompression (used in some MOBI files and KF8
+  dictionaries)
+- Cover and embedded image extraction (JPEG / PNG / GIF / BMP / SVG)
+- Embedded font extraction with XOR-deobfuscation + zlib decompression
+  (TTF / TTC / OTF)
+- Metadata via EXTH headers (title, author, publisher, description,
+  ASIN, ISBN, language, cover offset, KF8 boundary, …)
+- KF8 flow splitting via the FDST table (HTML / CSS / SVG / auxiliary)
+- KF8 XHTML reconstruction via the skeleton + fragment INDX records
+- EPUB 3 packaging — `mimetype` first uncompressed, OPF manifest,
+  NCX, all resources
+
+## What this does NOT support
+
+- **DRM removal.** Files encrypted with Amazon's PID/serial-key DRM
+  stay encrypted. There are tools that remove Kindle DRM; this library
+  is not one of them. Encrypted files raise an error.
+- **Topaz / `.tpz` / `.azw1`.** Topaz is a separate, more obscure
+  format. Out of scope.
+- **Kindle Print Replica.** It's wrapped PDF — use a PDF library.
+- **Flutter web.** The HUFF/CDIC decoder uses 64-bit shifts and the
+  FONT decoder uses `dart:io`'s `ZLibCodec`; neither work in JS.
+  Flutter native (mobile, desktop) and Dart VM are fully supported.
 
 ## Format primer
 
@@ -57,108 +111,20 @@ PDB (Palm Database)              ← the file itself; a record-based container
         └── …
 ```
 
-AZW3 / KF8 files are often "dual": they contain a legacy MOBI section *and*
-a KF8 section in the same PDB, so old Kindles fall back gracefully.
-Detecting which sections belong to which version is its own little parsing
-problem.
-
-## Roadmap
-
-Each phase is meant to land independently with tests:
-
-- [x] **Phase 1 — PDB container.** Parse the Palm Database header and
-      record table. Produces a `List<Uint8List>` of raw records.
-- [x] **Phase 2 — PalmDOC + MOBI headers.** Parse the first record's
-      headers into a typed struct. Identify Mobi version, encoding,
-      record indices.
-- [x] **Phase 3 — EXTH metadata.** Parse EXTH key/value records into a
-      `Map<int, dynamic>` and expose convenience accessors (`title`,
-      `author`, `description`, `asin`, …).
-- [x] **Phase 4 — PalmDOC decompression.** LZ77-ish bytecode interpreter.
-      Decompress text records into a single HTML string.
-- [x] **Phase 5 — Image extraction.** Walk image records, return
-      `{name: bytes}`. Handle the cover record specially.
-- [x] **Phase 6 — HUFF/CDIC decompression.** Huffman + dictionary-coded
-      compression used in some MOBI files. Larger than PalmDOC.
-- [x] **Phase 7 — KF8 detection + section extraction.** Identify KF8
-      portion in dual-format files via boundary record. Handle FDST table.
-- [x] **Phase 8 — KF8 resources.** RESC (OPF manifest), FONT (embedded
-      fonts, often obfuscated), embedded raster/vector images.
-- [x] **Phase 9 — KF8 HTML reconstruction.** Slice the decompressed
-      rawML into FDST-bounded flows (HTML / CSS / SVG / auxiliary).
-      Per-XHTML splitting via the skeleton + fragment INDX records is
-      deferred to Phase 10, where the EPUB packager decides how many
-      `.xhtml` files to emit.
-- [x] **Phase 10 — EPUB output.** Walk the skeleton + fragment INDX to
-      split the primary flow into individual XHTML parts; package
-      everything (parts + CSS + images + OPF manifest) into a proper
-      EPUB 3 zip on disk. Integration target for
-      [`My_book_reader`](https://github.com/emaurel/My_book_reader).
-      One-call entry point: `KindleBook.fromBytes(bytes).toEpub()`.
-- [ ] **Phase 11 — Public API + docs.** Stable surface, CHANGELOG,
-      pub.dev publish.
-
-Phases 1–5 cover roughly 80% of real-world `.mobi` files. Phases 6–9
-are needed for AZW3 from current-gen Kindle exports. Phase 10 is what
-turns this into something a reader app can use directly.
-
-## Architecture sketch
-
-```dart
-// Public API (target shape — none of this exists yet).
-
-import 'package:kindle_unpack/kindle_unpack.dart';
-
-final book = await KindleBook.fromBytes(bytes);
-
-book.metadata.title;     // String
-book.metadata.author;    // String?
-book.metadata.asin;      // String?
-
-book.html;               // String — full HTML, links rewritten to images/
-book.images;             // Map<String, Uint8List> — name -> bytes
-book.cover;              // Uint8List? — convenience for the cover image
-
-// Higher-level: emit an EPUB
-final epubBytes = await book.toEpub();
-```
-
-Internally the library is a stack of small parsers:
-
-```
-lib/
-├── kindle_unpack.dart            ← public API
-└── src/
-    ├── pdb.dart                  ← Palm Database record parser
-    ├── headers/
-    │   ├── palmdoc_header.dart
-    │   ├── mobi_header.dart
-    │   └── exth.dart
-    ├── decompress/
-    │   ├── palmdoc.dart          ← LZ77-ish
-    │   └── huff_cdic.dart        ← Huffman + dictionary
-    ├── kf8/
-    │   ├── boundary.dart         ← detect MOBI/KF8 split
-    │   ├── fdst.dart             ← FDST section table
-    │   └── resources.dart
-    ├── html.dart                 ← link rewriting, normalization
-    └── epub.dart                 ← EPUB packaging (Phase 10)
-```
+AZW3 / KF8 files are often "dual": they contain a legacy MOBI section
+*and* a KF8 section in the same PDB, so old Kindles fall back gracefully.
+`KindleFile.inspect` classifies the file and returns the appropriate
+`KindleSection`(s).
 
 ## References
 
-The MOBI format isn't officially documented. These are the practical
-sources:
-
-- **[KindleUnpack source][1]** — the reference implementation we're
-  porting. ~10k LoC of Python, GPL-3.
+- **[KindleUnpack source][1]** — the reference implementation we
+  ported. ~10k LoC of Python, GPL-3.
 - **[MobileRead MOBI wiki][2]** — community reverse-engineering of the
-  binary layout. Best single-page format reference.
+  binary layout.
 - **[Calibre's MOBI reader][3]** — independent C/Python implementation
   inside Calibre. Useful for cross-checking edge cases.
 - **[Wikipedia: PalmDOC][4]** — for the PDB outer container.
-- **MobiPerl (archived)** — the original reverse-engineering effort,
-  much of which the above tools inherit. Hard to find now.
 
 [1]: https://github.com/kevinhendricks/KindleUnpack
 [2]: https://wiki.mobileread.com/wiki/MOBI
@@ -175,5 +141,7 @@ genuinely a lot more work and is not what this project does.
 
 ## Contributing
 
-This is a personal exploratory project for now. If a phase looks fun
-and you want to take it on, open an issue first so we don't duplicate.
+If a phase looks fun and you want to take it on, open an issue first so
+we don't duplicate. Real-world fixtures (especially HUFF/CDIC MOBI
+dictionaries, books with embedded fonts, or unusual KF8 layouts) are
+particularly welcome.

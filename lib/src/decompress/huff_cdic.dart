@@ -1,15 +1,12 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../exception.dart';
+
 /// Thrown when a HUFF/CDIC record can't be parsed or a compressed text
 /// record can't be decoded.
-class HuffCdicException implements Exception {
-  HuffCdicException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => 'HuffCdicException: $message';
+class HuffCdicException extends KindleUnpackException {
+  HuffCdicException(super.message);
 }
 
 /// One entry in the HUFF cache (the 256-entry table indexed by the top
