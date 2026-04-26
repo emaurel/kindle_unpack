@@ -89,11 +89,12 @@ Each phase is meant to land independently with tests:
       Per-XHTML splitting via the skeleton + fragment INDX records is
       deferred to Phase 10, where the EPUB packager decides how many
       `.xhtml` files to emit.
-- [ ] **Phase 10 — EPUB output.** Walk the skeleton + fragment INDX to
+- [x] **Phase 10 — EPUB output.** Walk the skeleton + fragment INDX to
       split the primary flow into individual XHTML parts; package
-      everything (parts + CSS + images + fonts + OPF manifest) into a
-      proper EPUB 3 zip on disk. Integration target for
+      everything (parts + CSS + images + OPF manifest) into a proper
+      EPUB 3 zip on disk. Integration target for
       [`My_book_reader`](https://github.com/emaurel/My_book_reader).
+      One-call entry point: `KindleBook.fromBytes(bytes).toEpub()`.
 - [ ] **Phase 11 — Public API + docs.** Stable surface, CHANGELOG,
       pub.dev publish.
 

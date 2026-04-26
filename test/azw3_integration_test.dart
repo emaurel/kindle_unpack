@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:kindle_unpack/kindle_unpack.dart';
 import 'package:test/test.dart';
 
@@ -216,6 +218,43 @@ void main() {
       for (var i = 0; i < parts.length; i++) {
         expect(parts[i].filename,
             'part${i.toString().padLeft(4, '0')}.xhtml');
+      }
+    });
+
+    test('KindleBook.toEpub produces a structurally valid EPUB zip', () {
+      final book = KindleBook.fromBytes(bytes);
+      final epubBytes = book.toEpub();
+
+      // Verify zip can be re-decoded.
+      final archive = ZipDecoder().decodeBytes(epubBytes);
+      final names = archive.files.map((f) => f.name).toSet();
+      // Required EPUB skeleton.
+      expect(names, contains('mimetype'));
+      expect(names, contains('META-INF/container.xml'));
+      expect(names, contains('OEBPS/content.opf'));
+      // 70 XHTML parts (one per skeleton).
+      final partFiles =
+          names.where((n) => n.startsWith('OEBPS/Text/part')).toList();
+      expect(partFiles, hasLength(book.parts.length));
+      // 9 image entries (matches what BookImages extracts on this file).
+      final imgFiles =
+          names.where((n) => n.startsWith('OEBPS/Images/')).toList();
+      expect(imgFiles, hasLength(book.images.all.length));
+
+      // mimetype is first entry, stored uncompressed (EPUB OCF spec).
+      final view = ByteData.sublistView(epubBytes);
+      final firstFnameLen = view.getUint16(26, Endian.little);
+      expect(latin1.decode(epubBytes.sublist(30, 30 + firstFnameLen)),
+          'mimetype');
+      expect(view.getUint16(8, Endian.little), 0);
+
+      // OPF spine references every part. We assert structural shape
+      // only — no book content is echoed.
+      final opfFile =
+          archive.files.firstWhere((f) => f.name == 'OEBPS/content.opf');
+      final opf = utf8.decode(opfFile.content as List<int>);
+      for (final part in book.parts) {
+        expect(opf, contains('Text/${part.filename}'));
       }
     });
 

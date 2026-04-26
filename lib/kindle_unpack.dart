@@ -6,6 +6,7 @@ library;
 
 export 'src/decompress/book_text.dart';
 export 'src/decompress/huff_cdic.dart';
+export 'src/epub.dart';
 export 'src/decompress/palmdoc.dart';
 export 'src/decompress/trailing_data.dart';
 export 'src/headers/exth.dart';
@@ -13,6 +14,7 @@ export 'src/headers/header_exception.dart';
 export 'src/headers/mobi_header.dart';
 export 'src/headers/palmdoc_header.dart';
 export 'src/images.dart';
+export 'src/kindle_book.dart';
 export 'src/kf8/boundary.dart';
 export 'src/kf8/fdst.dart';
 export 'src/kf8/flows.dart';
