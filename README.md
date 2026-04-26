@@ -71,7 +71,7 @@ Each phase is meant to land independently with tests:
 - [x] **Phase 2 — PalmDOC + MOBI headers.** Parse the first record's
       headers into a typed struct. Identify Mobi version, encoding,
       record indices.
-- [ ] **Phase 3 — EXTH metadata.** Parse EXTH key/value records into a
+- [x] **Phase 3 — EXTH metadata.** Parse EXTH key/value records into a
       `Map<int, dynamic>` and expose convenience accessors (`title`,
       `author`, `description`, `asin`, …).
 - [ ] **Phase 4 — PalmDOC decompression.** LZ77-ish bytecode interpreter.
