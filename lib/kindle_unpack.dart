@@ -17,5 +17,7 @@ export 'src/kf8/boundary.dart';
 export 'src/kf8/fdst.dart';
 export 'src/kf8/flows.dart';
 export 'src/kf8/font.dart';
+export 'src/kf8/indx.dart';
 export 'src/kf8/resc.dart';
+export 'src/kf8/skeleton_fragment.dart';
 export 'src/pdb.dart';
