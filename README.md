@@ -68,7 +68,7 @@ Each phase is meant to land independently with tests:
 
 - [x] **Phase 1 — PDB container.** Parse the Palm Database header and
       record table. Produces a `List<Uint8List>` of raw records.
-- [ ] **Phase 2 — PalmDOC + MOBI headers.** Parse the first record's
+- [x] **Phase 2 — PalmDOC + MOBI headers.** Parse the first record's
       headers into a typed struct. Identify Mobi version, encoding,
       record indices.
 - [ ] **Phase 3 — EXTH metadata.** Parse EXTH key/value records into a

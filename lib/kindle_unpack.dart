@@ -4,4 +4,7 @@
 /// This is the public entry point; everything else lives in `src/`.
 library;
 
+export 'src/headers/header_exception.dart';
+export 'src/headers/mobi_header.dart';
+export 'src/headers/palmdoc_header.dart';
 export 'src/pdb.dart';
