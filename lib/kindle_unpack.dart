@@ -4,6 +4,9 @@
 /// This is the public entry point; everything else lives in `src/`.
 library;
 
+export 'src/decompress/book_text.dart';
+export 'src/decompress/palmdoc.dart';
+export 'src/decompress/trailing_data.dart';
 export 'src/headers/exth.dart';
 export 'src/headers/header_exception.dart';
 export 'src/headers/mobi_header.dart';

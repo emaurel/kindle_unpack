@@ -35,6 +35,7 @@ class MobiHeader {
     required this.drmCount,
     required this.drmSize,
     required this.drmFlags,
+    required this.extraDataFlags,
   });
 
   /// 4-byte signature at the start of the MOBI header.
@@ -90,6 +91,15 @@ class MobiHeader {
   final int? drmCount;
   final int? drmSize;
   final int? drmFlags;
+
+  /// Bitfield at MOBI offset 0xF2 (uint16) describing per-text-record
+  /// trailing data entries. Bit `i > 0` set means each compressed text
+  /// record has a length-prefixed trailer for category `i` appended at
+  /// its end. Bit 0 set means each record ends with a single byte whose
+  /// low 2 bits + 1 give the count of bytes that overlap with the next
+  /// record's first multi-byte char. Older MOBI headers don't include
+  /// this field — we report it as 0 there, which means "no trailers".
+  final int extraDataFlags;
 
   /// True if an EXTH header sits immediately after this MOBI header.
   bool get hasExth => (exthFlags & 0x40) != 0;
@@ -165,6 +175,11 @@ class MobiHeader {
       return view.getUint32(sigOffset + relOffset);
     }
 
+    int? readU16(int relOffset) {
+      if (relOffset + 2 > headerLength) return null;
+      return view.getUint16(sigOffset + relOffset);
+    }
+
     return MobiHeader(
       headerLength: headerLength,
       mobiType: readU32(8) ?? 0,
@@ -188,6 +203,7 @@ class MobiHeader {
       drmCount: readU32(168),
       drmSize: readU32(172),
       drmFlags: readU32(176),
+      extraDataFlags: readU16(242) ?? 0,
     );
   }
 }
