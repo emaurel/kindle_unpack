@@ -127,6 +127,29 @@ void main() {
         anyOf(ImageFormat.jpeg, ImageFormat.png, ImageFormat.gif),
       );
     });
+
+    test('exactly one RESC record is present and parses to OPF XML', () {
+      // Walk the resource block looking for the RESC magic.
+      final rescIndices = <int>[];
+      for (var i = kf8.mobi.firstImageIndex; i < pdb.records.length; i++) {
+        final d = pdb.records[i].data;
+        if (d.length >= 4 &&
+            d[0] == 0x52 && d[1] == 0x45 && d[2] == 0x53 && d[3] == 0x43) {
+          rescIndices.add(i);
+        }
+      }
+      expect(rescIndices, hasLength(1),
+          reason: 'KF8 books carry exactly one RESC manifest');
+
+      final resc = RescResource.parse(pdb.records[rescIndices.single].data);
+      // Sanity-check the XML structure: it should contain the OPF
+      // metadata + spine elements, start with '<', and have no trailing
+      // null padding (the parser strips it).
+      expect(resc.xml, contains('<metadata'));
+      expect(resc.xml, contains('<spine'));
+      expect(resc.xml.codeUnitAt(0), 0x3C);
+      expect(resc.xmlBytes.last, isNot(0));
+    });
   });
 }
 

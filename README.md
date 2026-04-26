@@ -82,7 +82,7 @@ Each phase is meant to land independently with tests:
       compression used in some MOBI files. Larger than PalmDOC.
 - [x] **Phase 7 — KF8 detection + section extraction.** Identify KF8
       portion in dual-format files via boundary record. Handle FDST table.
-- [ ] **Phase 8 — KF8 resources.** RESC (OPF manifest), FONT (embedded
+- [x] **Phase 8 — KF8 resources.** RESC (OPF manifest), FONT (embedded
       fonts, often obfuscated), embedded raster/vector images.
 - [ ] **Phase 9 — KF8 HTML reconstruction.** Reassemble HTML from KF8's
       multiple-section layout.
