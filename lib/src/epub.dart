@@ -22,6 +22,7 @@ class EpubBuilder {
   ///   mimetype                       (uncompressed, must be first)
   ///   META-INF/container.xml
   ///   OEBPS/content.opf
+  ///   OEBPS/nav.xhtml
   ///   OEBPS/toc.ncx
   ///   OEBPS/Text/<part>.xhtml
   ///   OEBPS/Images/<image>.<ext>
@@ -55,7 +56,15 @@ class EpubBuilder {
       _buildOpf(metadata, parts, images, css, fonts),
     );
 
-    // 4) OEBPS/toc.ncx (EPUB 2 fallback; readers happy with both)
+    // 4) OEBPS/nav.xhtml (EPUB 3 nav doc — required by strict readers
+    //    like epubx; the manifest item carries properties="nav").
+    _addUtf8(
+      archive,
+      'OEBPS/nav.xhtml',
+      _buildNav(metadata, parts),
+    );
+
+    // 5) OEBPS/toc.ncx (EPUB 2 fallback; readers happy with both)
     _addUtf8(
       archive,
       'OEBPS/toc.ncx',
@@ -132,6 +141,10 @@ class EpubBuilder {
       manifest.writeln(
           '    <item id="font$i" href="Fonts/${fonts[i].name}" media-type="$mime"/>');
     }
+    // EPUB 3 nav doc — strict readers (e.g. epubx) require an item
+    // with properties="nav" or they fail to locate the TOC.
+    manifest.writeln(
+        '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>');
     // NCX item (referenced by spine via toc=).
     manifest.writeln(
         '    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>');
@@ -159,6 +172,32 @@ class EpubBuilder {
         '$spine'
         '  </spine>\n'
         '</package>\n';
+  }
+
+  static String _buildNav(EpubMetadata m, List<XhtmlPart> parts) {
+    String esc(String s) => _escapeXml(s);
+    final items = StringBuffer();
+    for (var i = 0; i < parts.length; i++) {
+      items.writeln(
+          '        <li><a href="Text/${parts[i].filename}">Part ${i + 1}</a></li>');
+    }
+    return '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<!DOCTYPE html>\n'
+        '<html xmlns="http://www.w3.org/1999/xhtml" '
+        'xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${esc(m.language)}">\n'
+        '  <head>\n'
+        '    <meta charset="utf-8"/>\n'
+        '    <title>${esc(m.title)}</title>\n'
+        '  </head>\n'
+        '  <body>\n'
+        '    <nav epub:type="toc" id="toc">\n'
+        '      <h1>${esc(m.title)}</h1>\n'
+        '      <ol>\n'
+        '$items'
+        '      </ol>\n'
+        '    </nav>\n'
+        '  </body>\n'
+        '</html>\n';
   }
 
   static String _buildNcx(EpubMetadata m, List<XhtmlPart> parts) {
