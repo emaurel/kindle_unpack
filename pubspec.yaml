@@ -1,0 +1,11 @@
+name: kindle_unpack
+description: A pure-Dart library for reading Amazon Kindle ebook files (MOBI / AZW / AZW3 / KF8).
+version: 0.0.1
+repository: https://github.com/emaurel/kindle_unpack
+
+environment:
+  sdk: ^3.4.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
