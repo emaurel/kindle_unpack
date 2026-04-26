@@ -94,6 +94,24 @@ void main() {
       );
     });
 
+    test('drm fields read 0/unset (post-offset-fix)', () {
+      // After the rel-152 DRM offset correction these should be the
+      // actual file values, not the bytes 4 positions earlier (which
+      // were `unknown0` and read as 0xFFFFFFFF on this fixture). The
+      // book is DRM-free so hasDrm must be false; drmCount can be
+      // either 0 or the unset sentinel.
+      expect(mobi.hasDrm, isFalse);
+      expect(mobi.drmOffset, MobiHeader.unset);
+      expect(mobi.drmCount, anyOf(0, MobiHeader.unset));
+    });
+
+    test('inspects as a Mobi-7-only book', () {
+      final kf = KindleFile.inspect(pdb);
+      expect(kf.format, KindleFormat.mobi7Only);
+      expect(kf.kf8, isNull);
+      expect(kf.mobi7?.recordCount, pdb.records.length);
+    });
+
     test('extracts cover and thumbnail images, skips FLIS/FCIS markers', () {
       // P&P's image block holds 2 JPEGs at records 209 (cover) and 210
       // (thumbnail), then 3 non-image records (FLIS, FCIS, end marker).

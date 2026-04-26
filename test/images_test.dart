@@ -62,6 +62,10 @@ MobiHeader _mobi({required int firstImageIndex}) => MobiHeader(
       drmCount: MobiHeader.unset,
       drmSize: 0,
       drmFlags: 0,
+      fdstRecord: null,
+      fdstFlowCount: null,
+      fragmentIndex: null,
+      skeletonIndex: null,
       extraDataFlags: 0,
     );
 

@@ -74,10 +74,10 @@ Uint8List _buildRecord0({
   writeU32(96, huffmanRecordOffset);
   writeU32(100, huffmanRecordCount);
   writeU32(112, exthFlags);
-  writeU32(148, drmOffset);
-  writeU32(152, drmCount);
-  writeU32(156, drmSize);
-  writeU32(160, drmFlags);
+  writeU32(152, drmOffset);
+  writeU32(156, drmCount);
+  writeU32(160, drmSize);
+  writeU32(164, drmFlags);
 
   if (tail.isNotEmpty) {
     out.setRange(mobiEnd, mobiEnd + tail.length, tail);
