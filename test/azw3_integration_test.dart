@@ -1,0 +1,142 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:kindle_unpack/kindle_unpack.dart';
+import 'package:test/test.dart';
+
+/// End-to-end smoke test against a real KF8 (AZW3) file.
+///
+/// The fixture isn't checked in — modern AZW3 books are typically under
+/// active copyright and can't sit alongside the GPL-3 source. To run
+/// this suite locally, drop a DRM-free AZW3 at the path below
+/// (`Leviathan_Wakes.azw3` is what the original development used). The
+/// suite skips itself when the file is absent.
+///
+/// **Caution:** assertions exercise structural properties (record
+/// counts, table sizes, format detection, decompressed length) but
+/// deliberately don't echo book content. The `decompressBookText` call
+/// produces the full novel; we check its length and a tiny invariant
+/// (whitespace ratio) without printing the bytes.
+void main() {
+  final fixture = File('test/fixtures/Leviathan_Wakes.azw3');
+  if (!fixture.existsSync()) {
+    test('AZW3 integration skipped (fixture missing)', () {
+      // ignore: avoid_print
+      print(
+        'Skipping AZW3 integration tests: ${fixture.path} not present. '
+        'Drop a DRM-free AZW3 there to enable.',
+      );
+    }, skip: 'AZW3 fixture not present');
+    return;
+  }
+  final bytes = fixture.readAsBytesSync();
+
+  group('AZW3 fixture', () {
+    late PdbFile pdb;
+    late KindleFile kf;
+    late KindleSection kf8;
+
+    setUpAll(() {
+      pdb = PdbFile.parse(bytes);
+      kf = KindleFile.inspect(pdb);
+      // Every AZW3 file we'd realistically test against is either
+      // standalone KF8 or combo with a KF8 section.
+      kf8 = kf.kf8!;
+    });
+
+    test('detected as a KF8 file (standalone or combo)', () {
+      expect(kf.format, anyOf(KindleFormat.kf8Only, KindleFormat.combo));
+      expect(kf.kf8, isNotNull);
+      expect(kf8.mobi.fileVersion, greaterThanOrEqualTo(8));
+    });
+
+    test('KF8 record 0 carries non-empty headers', () {
+      expect(kf8.palmDoc.textRecordCount, greaterThan(0));
+      expect(kf8.mobi.headerLength, greaterThanOrEqualTo(232));
+      expect(kf8.mobi.textEncoding, 65001);
+      expect(kf8.mobi.hasExth, isTrue);
+      expect(kf8.exth, isNotNull);
+    });
+
+    test('drm fields are unset (DRM-free book)', () {
+      expect(kf8.mobi.hasDrm, isFalse);
+      expect(kf8.mobi.drmCount, anyOf(0, MobiHeader.unset));
+    });
+
+    test('FDST entries are contiguous starting at offset 0', () {
+      expect(kf8.mobi.fdstRecord, isNotNull);
+      expect(kf8.mobi.fdstRecord, isNot(MobiHeader.unset));
+      final fdstRec = pdb.records[kf8.mobi.fdstRecord! + kf8.recordOffset];
+      final fdst = FdstTable.parse(fdstRec.data);
+      expect(fdst.sectionCount, greaterThan(0));
+      expect(fdst.entries.first.start, 0);
+      for (var i = 1; i < fdst.entries.length; i++) {
+        expect(
+          fdst.entries[i].start,
+          fdst.entries[i - 1].end,
+          reason: 'FDST entries should be contiguous',
+        );
+      }
+      // KF8's first flow is the HTML; its length matches the PalmDOC
+      // textLength field (which only covers the primary flow, not the
+      // CSS / font / NCX flows that follow).
+      expect(fdst.entries.first.end, kf8.palmDoc.textLength);
+    });
+
+    test('HUFF/CDIC decompression matches FDST total flow length', () {
+      // Exercises Phase 6's decompressor against real bytes for the
+      // first time — the synthetic round-trips cover the algorithm,
+      // but a real KF8 has many text records and a multi-record CDIC
+      // dictionary with non-precoded entries, which the synthetic tests
+      // can't reach.
+      //
+      // KF8's `textLength` only counts the primary HTML flow. The
+      // decompressed rawML extends further to cover CSS / font / NCX
+      // flows; the FDST table's last entry tells us the true total.
+      expect(kf8.palmDoc.compression, CompressionType.huffCdic);
+      final fdstRec = pdb.records[kf8.mobi.fdstRecord! + kf8.recordOffset];
+      final fdst = FdstTable.parse(fdstRec.data);
+      final text = decompressBookText(
+        pdb: pdb,
+        palmDoc: kf8.palmDoc,
+        mobi: kf8.mobi,
+      );
+      expect(text.length, fdst.entries.last.end);
+      // Cheap content sanity: the rawML should be mostly printable
+      // ASCII / UTF-8 — at least 50 % of bytes in the 0x20..0x7E range.
+      // We deliberately don't log or fingerprint the actual content.
+      final printable = _printableRatio(text);
+      expect(
+        printable,
+        greaterThan(0.5),
+        reason: 'decompressed text looks more like binary than HTML/text',
+      );
+    });
+
+    test('cover image is present and has a recognised format', () {
+      final images = BookImages.extract(
+        pdb: pdb,
+        mobi: kf8.mobi,
+        exth: kf8.exth,
+      );
+      expect(images.all, isNotEmpty);
+      final cover = images.cover;
+      expect(cover, isNotNull);
+      expect(
+        cover!.format,
+        anyOf(ImageFormat.jpeg, ImageFormat.png, ImageFormat.gif),
+      );
+    });
+  });
+}
+
+double _printableRatio(Uint8List bytes) {
+  if (bytes.isEmpty) return 0;
+  var printable = 0;
+  for (final b in bytes) {
+    if ((b >= 0x20 && b <= 0x7E) || b == 0x09 || b == 0x0A || b == 0x0D) {
+      printable++;
+    }
+  }
+  return printable / bytes.length;
+}

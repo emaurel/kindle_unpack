@@ -35,6 +35,10 @@ class MobiHeader {
     required this.drmCount,
     required this.drmSize,
     required this.drmFlags,
+    required this.fdstRecord,
+    required this.fdstFlowCount,
+    required this.fragmentIndex,
+    required this.skeletonIndex,
     required this.extraDataFlags,
   });
 
@@ -91,6 +95,26 @@ class MobiHeader {
   final int? drmCount;
   final int? drmSize;
   final int? drmFlags;
+
+  /// PDB record index of the FDST table on KF8 headers ([fileVersion] >=
+  /// 8). On Mobi-7 headers the same offset (rel 176) holds the
+  /// `first_content` record instead — readers should consult
+  /// [fileVersion] before treating this as an FDST pointer. Null only
+  /// when [headerLength] doesn't reach this field.
+  final int? fdstRecord;
+
+  /// KF8-only: count of "flows" the FDST splits the rawML into. The FDST
+  /// table itself carries the per-flow byte ranges. Garbage on Mobi-7
+  /// headers — same offset (rel 180) holds an unrelated value there.
+  final int? fdstFlowCount;
+
+  /// KF8-only: PDB record index of the fragment INDX (per-fragment ID
+  /// metadata, used to reassemble HTML chunks). [unset] if absent.
+  final int? fragmentIndex;
+
+  /// KF8-only: PDB record index of the skeleton INDX (the HTML skeleton
+  /// into which fragments are spliced). [unset] if absent.
+  final int? skeletonIndex;
 
   /// Bitfield at MOBI offset 0xF2 (uint16) describing per-text-record
   /// trailing data entries. Bit `i > 0` set means each compressed text
@@ -203,10 +227,20 @@ class MobiHeader {
       huffmanTableOffset: readU32(104) ?? 0,
       huffmanTableLength: readU32(108) ?? 0,
       exthFlags: readU32(112) ?? 0,
-      drmOffset: readU32(148),
-      drmCount: readU32(152),
-      drmSize: readU32(156),
-      drmFlags: readU32(160),
+      // DRM block: per KindleUnpack's mobi_header.py, the four DRM fields
+      // sit at MOBI-relative 152..167. Earlier versions of this parser had
+      // them at 148..163, which lined up with `unknown0` + drm_offset +
+      // drm_count + drm_size — the bug stayed hidden because every fixture
+      // we had carried 0xFFFFFFFF in `unknown0` (so drmOffset still read as
+      // unset and hasDrm still returned false).
+      drmOffset: readU32(152),
+      drmCount: readU32(156),
+      drmSize: readU32(160),
+      drmFlags: readU32(164),
+      fdstRecord: readU32(176),
+      fdstFlowCount: readU32(180),
+      fragmentIndex: readU32(232),
+      skeletonIndex: readU32(236),
       extraDataFlags: readU16(226) ?? 0,
     );
   }

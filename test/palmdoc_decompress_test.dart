@@ -224,6 +224,10 @@ void main() {
           drmCount: drmCount,
           drmSize: 0,
           drmFlags: 0,
+          fdstRecord: null,
+          fdstFlowCount: null,
+          fragmentIndex: null,
+          skeletonIndex: null,
           extraDataFlags: extraDataFlags,
         );
 

@@ -13,4 +13,6 @@ export 'src/headers/header_exception.dart';
 export 'src/headers/mobi_header.dart';
 export 'src/headers/palmdoc_header.dart';
 export 'src/images.dart';
+export 'src/kf8/boundary.dart';
+export 'src/kf8/fdst.dart';
 export 'src/pdb.dart';
