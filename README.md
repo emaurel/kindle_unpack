@@ -74,7 +74,7 @@ Each phase is meant to land independently with tests:
 - [x] **Phase 3 — EXTH metadata.** Parse EXTH key/value records into a
       `Map<int, dynamic>` and expose convenience accessors (`title`,
       `author`, `description`, `asin`, …).
-- [ ] **Phase 4 — PalmDOC decompression.** LZ77-ish bytecode interpreter.
+- [x] **Phase 4 — PalmDOC decompression.** LZ77-ish bytecode interpreter.
       Decompress text records into a single HTML string.
 - [ ] **Phase 5 — Image extraction.** Walk image records, return
       `{name: bytes}`. Handle the cover record specially.
