@@ -2,7 +2,7 @@ name: kindle_unpack
 description: >-
   Pure-Dart library for reading Amazon Kindle ebook files (MOBI / AZW /
   AZW3 / KF8) and re-emitting them as EPUB 3. No DRM removal.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/emaurel/kindle_unpack
 issue_tracker: https://github.com/emaurel/kindle_unpack/issues
 
@@ -20,5 +20,6 @@ dependencies:
   archive: ^3.6.1
 
 dev_dependencies:
+  epubx: ^4.0.0
   lints: ^4.0.0
   test: ^1.25.0

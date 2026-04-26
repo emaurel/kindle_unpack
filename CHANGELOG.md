@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1
+
+- Fix `toEpub()` so the OPF declares an EPUB 3 nav document
+  (`<item ... properties="nav"/>` pointing at a generated `nav.xhtml`).
+  Without it, strict EPUB 3 parsers like `epubx` failed to locate the
+  TOC and threw `EPUB parsing error: TOC item, not found in EPUB
+  manifest.` The packager still emits the NCX for EPUB 2 reader
+  compatibility.
+
 ## 0.1.0
 
 First release. Reads MOBI / AZW / AZW3 / KF8 files end-to-end and
