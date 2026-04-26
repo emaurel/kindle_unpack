@@ -31,6 +31,7 @@ void main() {
     late PalmDocHeader palmDoc;
     late MobiHeader mobi;
     late ExthHeader exth;
+    late BookImages images;
 
     setUpAll(() {
       pdb = PdbFile.parse(bytes);
@@ -42,6 +43,7 @@ void main() {
         offset: mobi.exthOffset,
         textEncoding: mobi.textEncoding,
       );
+      images = BookImages.extract(pdb: pdb, mobi: mobi, exth: exth);
     });
 
     test('PDB header identifies a Mobipocket book', () {
@@ -90,6 +92,23 @@ void main() {
         asString,
         contains('truth universally acknowledged'),
       );
+    });
+
+    test('extracts cover and thumbnail images, skips FLIS/FCIS markers', () {
+      // P&P's image block holds 2 JPEGs at records 209 (cover) and 210
+      // (thumbnail), then 3 non-image records (FLIS, FCIS, end marker).
+      expect(images.all, hasLength(2));
+      expect(images.all.every((i) => i.format == ImageFormat.jpeg), isTrue);
+
+      expect(images.cover, isNotNull);
+      expect(images.cover!.name, 'image00000.jpg');
+      expect(images.cover!.data.length, greaterThan(10000));
+
+      expect(images.thumbnail, isNotNull);
+      expect(images.thumbnail!.name, 'image00001.jpg');
+
+      // Generated names collide with neither each other nor a directory.
+      expect(images.toMap().keys, ['image00000.jpg', 'image00001.jpg']);
     });
   });
 }

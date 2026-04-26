@@ -76,7 +76,7 @@ Each phase is meant to land independently with tests:
       `author`, `description`, `asin`, …).
 - [x] **Phase 4 — PalmDOC decompression.** LZ77-ish bytecode interpreter.
       Decompress text records into a single HTML string.
-- [ ] **Phase 5 — Image extraction.** Walk image records, return
+- [x] **Phase 5 — Image extraction.** Walk image records, return
       `{name: bytes}`. Handle the cover record specially.
 - [ ] **Phase 6 — HUFF/CDIC decompression.** Huffman + dictionary-coded
       compression used in some MOBI files. Larger than PalmDOC.
