@@ -66,18 +66,18 @@ Uint8List _buildRecord0({
   writeU32(12, textEncoding);
   writeU32(16, uniqueId);
   writeU32(20, fileVersion);
-  writeU32(80, firstNonBookIndex);
-  writeU32(84, fullNameOffset);
-  writeU32(88, fullNameLength);
-  writeU32(92, locale);
-  writeU32(108, firstImageIndex);
-  writeU32(112, huffmanRecordOffset);
-  writeU32(116, huffmanRecordCount);
-  writeU32(128, exthFlags);
-  writeU32(164, drmOffset);
-  writeU32(168, drmCount);
-  writeU32(172, drmSize);
-  writeU32(176, drmFlags);
+  writeU32(64, firstNonBookIndex);
+  writeU32(68, fullNameOffset);
+  writeU32(72, fullNameLength);
+  writeU32(76, locale);
+  writeU32(92, firstImageIndex);
+  writeU32(96, huffmanRecordOffset);
+  writeU32(100, huffmanRecordCount);
+  writeU32(112, exthFlags);
+  writeU32(148, drmOffset);
+  writeU32(152, drmCount);
+  writeU32(156, drmSize);
+  writeU32(160, drmFlags);
 
   if (tail.isNotEmpty) {
     out.setRange(mobiEnd, mobiEnd + tail.length, tail);
