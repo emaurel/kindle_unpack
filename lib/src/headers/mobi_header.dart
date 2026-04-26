@@ -180,30 +180,34 @@ class MobiHeader {
       return view.getUint16(sigOffset + relOffset);
     }
 
+    // MOBI field offsets are relative to the "MOBI" signature itself
+    // (see https://wiki.mobileread.com/wiki/MOBI). The fixed-size index
+    // block (orthographic, inflection, names, keys, extra 0..5) occupies
+    // offsets 24..63, then the per-book fields start at 64.
     return MobiHeader(
       headerLength: headerLength,
       mobiType: readU32(8) ?? 0,
       textEncoding: readU32(12) ?? 0,
       uniqueId: readU32(16) ?? 0,
       fileVersion: readU32(20) ?? 0,
-      firstNonBookIndex: readU32(80) ?? unset,
-      fullNameOffset: readU32(84) ?? 0,
-      fullNameLength: readU32(88) ?? 0,
-      locale: readU32(92) ?? 0,
-      inputLanguage: readU32(96) ?? 0,
-      outputLanguage: readU32(100) ?? 0,
-      minVersion: readU32(104) ?? 0,
-      firstImageIndex: readU32(108) ?? unset,
-      huffmanRecordOffset: readU32(112) ?? 0,
-      huffmanRecordCount: readU32(116) ?? 0,
-      huffmanTableOffset: readU32(120) ?? 0,
-      huffmanTableLength: readU32(124) ?? 0,
-      exthFlags: readU32(128) ?? 0,
-      drmOffset: readU32(164),
-      drmCount: readU32(168),
-      drmSize: readU32(172),
-      drmFlags: readU32(176),
-      extraDataFlags: readU16(242) ?? 0,
+      firstNonBookIndex: readU32(64) ?? unset,
+      fullNameOffset: readU32(68) ?? 0,
+      fullNameLength: readU32(72) ?? 0,
+      locale: readU32(76) ?? 0,
+      inputLanguage: readU32(80) ?? 0,
+      outputLanguage: readU32(84) ?? 0,
+      minVersion: readU32(88) ?? 0,
+      firstImageIndex: readU32(92) ?? unset,
+      huffmanRecordOffset: readU32(96) ?? 0,
+      huffmanRecordCount: readU32(100) ?? 0,
+      huffmanTableOffset: readU32(104) ?? 0,
+      huffmanTableLength: readU32(108) ?? 0,
+      exthFlags: readU32(112) ?? 0,
+      drmOffset: readU32(148),
+      drmCount: readU32(152),
+      drmSize: readU32(156),
+      drmFlags: readU32(160),
+      extraDataFlags: readU16(226) ?? 0,
     );
   }
 }
