@@ -15,6 +15,7 @@ export 'src/headers/palmdoc_header.dart';
 export 'src/images.dart';
 export 'src/kf8/boundary.dart';
 export 'src/kf8/fdst.dart';
+export 'src/kf8/flows.dart';
 export 'src/kf8/font.dart';
 export 'src/kf8/resc.dart';
 export 'src/pdb.dart';

@@ -84,10 +84,15 @@ Each phase is meant to land independently with tests:
       portion in dual-format files via boundary record. Handle FDST table.
 - [x] **Phase 8 — KF8 resources.** RESC (OPF manifest), FONT (embedded
       fonts, often obfuscated), embedded raster/vector images.
-- [ ] **Phase 9 — KF8 HTML reconstruction.** Reassemble HTML from KF8's
-      multiple-section layout.
-- [ ] **Phase 10 — EPUB output.** Wrap the parsed result into a proper
-      EPUB 3 zip on disk. This is the integration target for
+- [x] **Phase 9 — KF8 HTML reconstruction.** Slice the decompressed
+      rawML into FDST-bounded flows (HTML / CSS / SVG / auxiliary).
+      Per-XHTML splitting via the skeleton + fragment INDX records is
+      deferred to Phase 10, where the EPUB packager decides how many
+      `.xhtml` files to emit.
+- [ ] **Phase 10 — EPUB output.** Walk the skeleton + fragment INDX to
+      split the primary flow into individual XHTML parts; package
+      everything (parts + CSS + images + fonts + OPF manifest) into a
+      proper EPUB 3 zip on disk. Integration target for
       [`My_book_reader`](https://github.com/emaurel/My_book_reader).
 - [ ] **Phase 11 — Public API + docs.** Stable surface, CHANGELOG,
       pub.dev publish.
