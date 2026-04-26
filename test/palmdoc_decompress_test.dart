@@ -328,7 +328,7 @@ void main() {
       );
     });
 
-    test('throws on HUFF/CDIC compression (Phase 6)', () {
+    test('throws on HUFF/CDIC when MOBI advertises no HUFF records', () {
       final pdb = makePdb([
         [0x00],
         [0x41],
