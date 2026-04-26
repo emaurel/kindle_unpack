@@ -128,6 +128,35 @@ void main() {
       );
     });
 
+    test('BookFlows.split partitions rawML by FDST byte ranges', () {
+      final rawML = decompressBookText(
+        pdb: pdb,
+        palmDoc: kf8.palmDoc,
+        mobi: kf8.mobi,
+      );
+      final fdstRec = pdb.records[kf8.mobi.fdstRecord! + kf8.recordOffset];
+      final fdst = FdstTable.parse(fdstRec.data);
+      final flows = BookFlows.split(rawML, fdst);
+
+      expect(flows.flows, hasLength(fdst.entries.length));
+      var sum = 0;
+      for (final f in flows.flows) {
+        sum += f.length;
+      }
+      expect(sum, rawML.length);
+
+      // Flow 0 is the primary HTML; the structure check doesn't echo
+      // any book content.
+      expect(flows.primaryHtml, isNotNull);
+      expect(flows.primaryHtml!.index, 0);
+      final head = flows.primaryHtml!.bytes;
+      var i = 0;
+      while (i < head.length && (head[i] == 0x20 || head[i] == 0x0A)) {
+        i++;
+      }
+      expect(head[i], 0x3C, reason: 'primary flow should start with "<"');
+    });
+
     test('exactly one RESC record is present and parses to OPF XML', () {
       // Walk the resource block looking for the RESC magic.
       final rescIndices = <int>[];
