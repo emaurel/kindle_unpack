@@ -16,3 +16,7 @@ coverage/
 # Misc
 .DS_Store
 *.log
+
+# Local-only test fixtures (copyrighted material; do not commit)
+test/fixtures/*.azw3
+test/fixtures/*.azw
