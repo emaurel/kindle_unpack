@@ -1,13 +1,10 @@
 import 'dart:typed_data';
 
+import '../exception.dart';
+
 /// Thrown when a PalmDOC-compressed input can't be decoded.
-class PalmDocDecompressException implements Exception {
-  PalmDocDecompressException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => 'PalmDocDecompressException: $message';
+class PalmDocDecompressException extends KindleUnpackException {
+  PalmDocDecompressException(super.message);
 }
 
 /// Decompress a single PalmDOC-compressed byte stream.

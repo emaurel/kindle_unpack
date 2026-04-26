@@ -10,6 +10,7 @@ import 'images.dart';
 import 'kf8/boundary.dart';
 import 'kf8/fdst.dart';
 import 'kf8/flows.dart';
+import 'kf8/font.dart';
 import 'kf8/skeleton_fragment.dart';
 import 'kf8/xhtml_split.dart';
 import 'pdb.dart';
@@ -31,6 +32,7 @@ class KindleBook {
     required this.parts,
     required this.images,
     required this.flows,
+    required this.fonts,
   });
 
   factory KindleBook.fromBytes(Uint8List bytes) {
@@ -79,6 +81,8 @@ class KindleBook {
       exth: section.exth,
     );
 
+    final fonts = _extractFonts(pdb, section);
+
     return KindleBook._(
       pdb: pdb,
       format: kf.format,
@@ -87,7 +91,27 @@ class KindleBook {
       parts: parts,
       images: images,
       flows: flows,
+      fonts: fonts,
     );
+  }
+
+  static List<FontResource> _extractFonts(PdbFile pdb, KindleSection section) {
+    final fonts = <FontResource>[];
+    final start = section.mobi.firstImageIndex;
+    if (start == MobiHeader.unset || start == 0) return fonts;
+    for (var i = start; i < pdb.records.length; i++) {
+      final d = pdb.records[i].data;
+      if (d.length >= 4 &&
+          d[0] == 0x46 && d[1] == 0x4F && d[2] == 0x4E && d[3] == 0x54) {
+        try {
+          fonts.add(FontResource.parse(d));
+        } on HeaderException {
+          // Skip records that look like FONT but don't parse — corrupt
+          // entries shouldn't bring down the whole book.
+        }
+      }
+    }
+    return fonts;
   }
 
   final PdbFile pdb;
@@ -105,6 +129,10 @@ class KindleBook {
 
   /// Non-null only for KF8 books — null on Mobi-7-only files.
   final BookFlows? flows;
+
+  /// Embedded fonts decoded from FONT records (Phase 8). Empty list when
+  /// the book ships none — the common case for novels.
+  final List<FontResource> fonts;
 
   ExthHeader? get exth => section.exth;
   PalmDocHeader get palmDoc => section.palmDoc;
@@ -135,6 +163,16 @@ class KindleBook {
       }
     }
 
+    final fontAssets = <EpubAsset>[];
+    for (var i = 0; i < fonts.length; i++) {
+      final font = fonts[i];
+      fontAssets.add(EpubAsset(
+        name: 'font${i.toString().padLeft(4, '0')}.${font.format.extension}',
+        bytes: font.payload,
+        mediaType: _fontMime(font.format),
+      ));
+    }
+
     final cover = images.cover;
     final coverId = cover != null ? 'img${cover.blockIndex}' : null;
 
@@ -153,6 +191,20 @@ class KindleBook {
       parts: parts,
       images: images.all,
       css: css,
+      fonts: fontAssets,
     );
+  }
+
+  static String? _fontMime(FontFormat fmt) {
+    switch (fmt) {
+      case FontFormat.ttf:
+        return 'application/font-sfnt';
+      case FontFormat.ttc:
+        return 'application/font-sfnt';
+      case FontFormat.otf:
+        return 'application/vnd.ms-opentype';
+      case FontFormat.unknown:
+        return null;
+    }
   }
 }

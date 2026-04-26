@@ -1,14 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'exception.dart';
+
 /// Thrown when a byte stream cannot be parsed as a Palm Database.
-class PdbException implements Exception {
-  PdbException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => 'PdbException: $message';
+class PdbException extends KindleUnpackException {
+  PdbException(super.message);
 }
 
 /// Fixed-size header that sits at the start of every Palm Database file.
