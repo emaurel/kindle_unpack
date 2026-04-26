@@ -157,6 +157,34 @@ void main() {
       expect(head[i], 0x3C, reason: 'primary flow should start with "<"');
     });
 
+    test('skeleton + fragment INDX tables parse and align', () {
+      final skel = SkeletonTable.parse(pdb, kf8.mobi);
+      final frag = FragmentTable.parse(pdb, kf8.mobi);
+
+      // Cross-check on the AZW3 we developed against: 70 skeletons,
+      // 414 fragments, fragmentCount across skeletons sums to the
+      // fragment-table size.
+      expect(skel.entries, hasLength(70));
+      expect(frag.entries, hasLength(414));
+      var totalFragments = 0;
+      for (final s in skel.entries) {
+        totalFragments += s.fragmentCount;
+      }
+      expect(totalFragments, frag.entries.length);
+
+      // Skeletons should be ordered by start offset and non-overlapping.
+      var prevEnd = 0;
+      for (final s in skel.entries) {
+        expect(s.start, greaterThanOrEqualTo(prevEnd));
+        prevEnd = s.end;
+      }
+
+      // Each fragment's fileNumber must reference an existing skeleton.
+      for (final f in frag.entries) {
+        expect(f.fileNumber, lessThan(skel.entries.length));
+      }
+    });
+
     test('exactly one RESC record is present and parses to OPF XML', () {
       // Walk the resource block looking for the RESC magic.
       final rescIndices = <int>[];
