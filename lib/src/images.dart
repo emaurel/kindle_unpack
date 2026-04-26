@@ -4,29 +4,33 @@ import 'headers/exth.dart';
 import 'headers/mobi_header.dart';
 import 'pdb.dart';
 
-/// Raster image formats embedded in MOBI files. Detected by magic bytes
-/// at the start of the record. Other formats (WebP, JPEG2000, SVG) do
-/// appear occasionally in KF8 files; we add them as we hit them.
+/// Image formats embedded in MOBI / KF8 files, detected by magic bytes
+/// at the start of the record. WebP and JPEG2000 do appear occasionally
+/// in KF8 files; we add them as we hit them.
 enum ImageFormat {
   jpeg('jpg', [0xFF, 0xD8, 0xFF]),
   png('png', [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
   gif('gif', [0x47, 0x49, 0x46, 0x38]), // matches GIF87a + GIF89a
-  bmp('bmp', [0x42, 0x4D]);
+  bmp('bmp', [0x42, 0x4D]),
+  svg('svg', _svgMarker);
 
   const ImageFormat(this.extension, this.magic);
 
   /// File extension (without leading dot), e.g. "jpg".
   final String extension;
 
-  /// Magic-byte prefix that uniquely identifies this format.
+  /// Magic-byte prefix that identifies this format. SVG uses a sentinel
+  /// (see [_svgMarker]) and is matched separately by [detect].
   final List<int> magic;
 
   /// Sniff the format of [bytes] from its leading magic. Returns null
   /// when the prefix doesn't match any known format.
   static ImageFormat? detect(Uint8List bytes) {
     for (final fmt in ImageFormat.values) {
+      if (fmt == ImageFormat.svg) continue;
       if (_startsWith(bytes, fmt.magic)) return fmt;
     }
+    if (_looksLikeSvg(bytes)) return ImageFormat.svg;
     return null;
   }
 
@@ -37,7 +41,32 @@ enum ImageFormat {
     }
     return true;
   }
+
+  /// SVG can show up as a raw `<svg ...>` document or as XML wrapping —
+  /// `<?xml version=...?>` followed by an `<svg>` root. We check the
+  /// first ~256 bytes for either signal so we don't accidentally
+  /// classify e.g. the RESC record (also XML, but `<metadata>` rooted)
+  /// as an image.
+  static bool _looksLikeSvg(Uint8List bytes) {
+    if (bytes.length < 4) return false;
+    final scanLen = bytes.length < 256 ? bytes.length : 256;
+    // Lower-case '<svg' — case-insensitive match.
+    for (var i = 0; i + 4 <= scanLen; i++) {
+      final b0 = bytes[i];
+      if (b0 != 0x3C) continue; // '<'
+      final c1 = bytes[i + 1] | 0x20;
+      final c2 = bytes[i + 2] | 0x20;
+      final c3 = bytes[i + 3] | 0x20;
+      if (c1 == 0x73 && c2 == 0x76 && c3 == 0x67) return true; // 'svg'
+    }
+    return false;
+  }
 }
+
+// Sentinel — SVG matching is content-based via [ImageFormat._looksLikeSvg],
+// not a fixed prefix. Using an unmatchable byte sequence keeps the regular
+// `_startsWith` path from ever firing for SVG.
+const List<int> _svgMarker = <int>[];
 
 /// One image extracted from a MOBI's image record block.
 class ExtractedImage {
