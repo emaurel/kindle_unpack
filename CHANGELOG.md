@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0
+
+**Breaking:** requires `archive` 4.x and Dart SDK 3.8+.
+
+- Migrate to `archive` ^4.0.9. Apps on `archive` 4.x — which is
+  effectively all of them now, since `image` 4.x requires it — could not
+  depend on kindle_unpack at all while it pinned `archive` ^3.6.1, and
+  had to vendor a patched fork instead. The EPUB packager now sets the
+  `mimetype` entry's storage via archive 4's `compression` enum rather
+  than 3.x's removed `compress` bool, and uses `ZipEncoder.encodeBytes`,
+  which returns a non-nullable `Uint8List`. The emitted zip is
+  unchanged: `mimetype` is still the first entry and still STORED, as
+  OCF requires.
+- Raise the SDK floor to ^3.8.0 and move to `lints` ^6.1.0.
+- Swap the dev-only `epubx` strict-reader roundtrip test over to
+  `epub_plus` ^5.1.0. `epubx` was last published in 2023 and pins
+  `archive` ^3.1.6, which is what blocked the upgrade.
+
 ## 0.1.1
 
 - Fix `toEpub()` so the OPF declares an EPUB 3 nav document
