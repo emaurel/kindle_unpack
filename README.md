@@ -22,7 +22,7 @@ This library plugs that hole: feed it bytes, get back HTML + metadata
 
 ```yaml
 dependencies:
-  kindle_unpack: ^0.1.0
+  kindle_unpack: ^0.2.0
 ```
 
 ## Usage

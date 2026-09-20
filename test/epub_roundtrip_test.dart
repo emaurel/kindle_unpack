@@ -3,31 +3,30 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
-import 'package:epubx/epubx.dart' as epubx;
+import 'package:epub_plus/epub_plus.dart' as epub;
 import 'package:kindle_unpack/kindle_unpack.dart';
 import 'package:test/test.dart';
 
-/// Roundtrip: AZW3 -> KindleBook.toEpub() -> epubx.EpubReader.readBook.
+/// Roundtrip: AZW3 -> KindleBook.toEpub() -> EpubReader.readBook.
 ///
-/// epubx is a strict pure-Dart EPUB parser used by downstream readers
-/// (e.g. the My_book_reader Flutter app). The packager has historically
-/// produced an EPUB that opens in lenient tools but trips strict
-/// readers with:
+/// epub_plus is a strict pure-Dart EPUB parser (a maintained fork of
+/// epubx) standing in for the downstream readers that consume this
+/// package. It is the regression canary for the 0.1.1 nav-document
+/// bug: the packager used to emit an EPUB that opened in lenient tools
+/// but tripped strict readers with
 ///
 ///     Exception: EPUB parsing error: TOC item, not found in EPUB manifest.
 ///
-/// Root cause (confirmed by inspecting epubx's navigation_reader.dart
-/// and the OPF this packager emits): the OPF declares
-/// `<package version="3.0">`, so epubx looks for an EPUB-3 nav document
-/// — i.e. a manifest item with `properties="nav"`. Our packager only
-/// ships an NCX (`<item id="ncx" ... media-type="application/x-dtbncx+xml"/>`)
-/// and never declares a nav.xhtml, so the manifest lookup returns
-/// nothing and parsing fails.
+/// Root cause: the OPF declares `<package version="3.0">`, so an EPUB-3
+/// parser looks for a nav document — a manifest item with
+/// `properties="nav"`. The packager shipped only an NCX
+/// (`<item id="ncx" ... media-type="application/x-dtbncx+xml"/>`) and
+/// never declared a nav.xhtml, so the manifest lookup returned nothing
+/// and parsing failed.
 ///
-/// The fix in task #2 will make the packager either emit a real
-/// EPUB-3 nav.xhtml *and* declare it with properties="nav", or drop
-/// the package version to 2.0 and rely on the NCX. Either makes
-/// epubx happy.
+/// 0.1.1 fixed this by emitting a real nav.xhtml *and* declaring it
+/// with properties="nav", keeping the NCX for EPUB 2 readers. This test
+/// fails again if that regresses.
 void main() {
   final fixture = File('test/fixtures/Leviathan_Wakes.azw3');
   if (!fixture.existsSync()) {
@@ -41,7 +40,7 @@ void main() {
     return;
   }
 
-  group('AZW3 -> EPUB -> epubx roundtrip', () {
+  group('AZW3 -> EPUB -> strict-reader roundtrip', () {
     late Uint8List epubBytes;
 
     setUpAll(() {
@@ -56,7 +55,7 @@ void main() {
     test('OPF and NCX exist in the zip and reference matching files', () {
       // Sanity-only: this test passes today. It's here so when #2 lands
       // and the manifest gains a nav.xhtml entry, regressions in OPF
-      // shape get caught alongside the epubx assertion below.
+      // shape get caught alongside the strict-reader assertion below.
       final archive = ZipDecoder().decodeBytes(epubBytes);
       final opf = archive.findFile('OEBPS/content.opf');
       expect(opf, isNotNull, reason: 'content.opf missing from EPUB');
@@ -85,16 +84,15 @@ void main() {
       );
     });
 
-    test('parses cleanly with epubx (strict EPUB reader)', () async {
-      // This is the canary for the bug. Today this throws:
-      //   Exception: EPUB parsing error: TOC item, not found in EPUB manifest.
-      // After task #2 is fixed, epubx should return an EpubBook and
-      // expose at least one chapter / TOC entry.
-      final book = await epubx.EpubReader.readBook(epubBytes);
-      expect(book.Title, isNotEmpty);
-      expect(book.Chapters, isNotNull);
-      expect(book.Chapters!.length, greaterThan(0),
-          reason: 'epubx returned a book with no chapters; '
+    test('parses cleanly with epub_plus (strict EPUB reader)', () async {
+      // Canary for the 0.1.1 nav-document bug: before the fix this
+      // threw 'EPUB parsing error: TOC item, not found in EPUB
+      // manifest.' It must return a book with at least one chapter.
+      final book = await epub.EpubReader.readBook(epubBytes);
+      expect(book.title, isNotEmpty);
+      expect(book.chapters, isNotNull);
+      expect(book.chapters.length, greaterThan(0),
+          reason: 'strict reader returned a book with no chapters; '
               'TOC/spine wiring is probably still off');
     });
   });

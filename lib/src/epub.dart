@@ -43,7 +43,7 @@ class EpubBuilder {
       'mimetype',
       _epubMimetype.length,
       Uint8List.fromList(_epubMimetype.codeUnits),
-    )..compress = false;
+    )..compression = CompressionType.none;
     archive.addFile(mimetype);
 
     // 2) META-INF/container.xml
@@ -57,7 +57,7 @@ class EpubBuilder {
     );
 
     // 4) OEBPS/nav.xhtml (EPUB 3 nav doc — required by strict readers
-    //    like epubx; the manifest item carries properties="nav").
+    //    like epub_plus; the manifest item carries properties="nav").
     _addUtf8(
       archive,
       'OEBPS/nav.xhtml',
@@ -97,11 +97,7 @@ class EpubBuilder {
       );
     }
 
-    final encoded = ZipEncoder().encode(archive);
-    if (encoded == null) {
-      throw StateError('zip encoding produced null output');
-    }
-    return Uint8List.fromList(encoded);
+    return ZipEncoder().encodeBytes(archive);
   }
 
   static void _addUtf8(Archive archive, String path, String content) {
@@ -141,7 +137,7 @@ class EpubBuilder {
       manifest.writeln(
           '    <item id="font$i" href="Fonts/${fonts[i].name}" media-type="$mime"/>');
     }
-    // EPUB 3 nav doc — strict readers (e.g. epubx) require an item
+    // EPUB 3 nav doc — strict readers (e.g. epub_plus) require an item
     // with properties="nav" or they fail to locate the TOC.
     manifest.writeln(
         '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>');

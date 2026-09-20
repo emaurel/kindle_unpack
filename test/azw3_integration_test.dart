@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:archive/archive.dart';
+import 'package:archive/archive.dart' as arch;
 import 'package:kindle_unpack/kindle_unpack.dart';
 import 'package:test/test.dart';
 
@@ -226,7 +226,7 @@ void main() {
       final epubBytes = book.toEpub();
 
       // Verify zip can be re-decoded.
-      final archive = ZipDecoder().decodeBytes(epubBytes);
+      final archive = arch.ZipDecoder().decodeBytes(epubBytes);
       final names = archive.files.map((f) => f.name).toSet();
       // Required EPUB skeleton.
       expect(names, contains('mimetype'));
