@@ -12,9 +12,7 @@ import 'kf8/xhtml_split.dart';
 /// EPUB reader. The packager isn't ambitious — it doesn't try to
 /// preserve Kindlegen's original spine ordering refinements or NCX
 /// playOrder, just produces an EPUB that opens.
-class EpubBuilder {
-  EpubBuilder._();
-
+abstract final class EpubBuilder {
   /// Build the EPUB zip. Returns the byte buffer (not written to disk).
   ///
   /// Layout matches the EPUB OCF spec:

@@ -152,6 +152,24 @@ void main() {
       expect(stripTrailingDataEntries(record, 0x3), equals([0x41, 0x42, 0x43]));
     });
 
+    test('throws when the overlap indicator points before record start', () {
+      // An empty record has no byte to read the overlap indicator from,
+      // so the index walks off the front.
+      expect(
+        () => stripTrailingDataEntries(_u8([]), 0x1),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+
+    test('throws when the computed overlap exceeds the record', () {
+      // One byte whose low bits claim an extra overlap byte: the strip
+      // size comes out larger than the record itself.
+      expect(
+        () => stripTrailingDataEntries(_u8([0x01]), 0x1),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+
     test('throws when computed strip size exceeds record length', () {
       // var-int encodes 99, but the record only has 4 bytes.
       final record = _u8([0xE3, 0xAA, 0xBB, 0xCC]); // 0xE3 = 0x80 | 0x63 = 99
@@ -200,6 +218,8 @@ void main() {
       int extraDataFlags = 0,
       int drmOffset = MobiHeader.unset,
       int drmCount = MobiHeader.unset,
+      int huffmanRecordOffset = 0,
+      int huffmanRecordCount = 0,
     }) =>
         MobiHeader(
           headerLength: 232,
@@ -215,8 +235,8 @@ void main() {
           outputLanguage: 0,
           minVersion: 0,
           firstImageIndex: MobiHeader.unset,
-          huffmanRecordOffset: 0,
-          huffmanRecordCount: 0,
+          huffmanRecordOffset: huffmanRecordOffset,
+          huffmanRecordCount: huffmanRecordCount,
           huffmanTableOffset: 0,
           huffmanTableLength: 0,
           exthFlags: 0,
@@ -342,6 +362,25 @@ void main() {
           pdb: pdb,
           palmDoc: palmDoc(compression: CompressionType.huffCdic),
           mobi: mobi(),
+        ),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+
+    test('throws when the HUFF/CDIC records run past the PDB record list',
+        () {
+      // Offset 2 + count 2 needs records 2 and 3, but the PDB stops at
+      // index 2.
+      final pdb = makePdb([
+        [0x00],
+        [0x41],
+        [0x42],
+      ]);
+      expect(
+        () => decompressBookText(
+          pdb: pdb,
+          palmDoc: palmDoc(compression: CompressionType.huffCdic),
+          mobi: mobi(huffmanRecordOffset: 2, huffmanRecordCount: 2),
         ),
         throwsA(isA<HeaderException>()),
       );

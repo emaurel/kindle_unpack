@@ -11,9 +11,7 @@ import 'header_exception.dart';
 /// list covers the ones we expose typed accessors for, and is not
 /// exhaustive — unknown codes are still parsed and available via
 /// [ExthHeader.rawValues].
-class ExthType {
-  ExthType._();
-
+abstract final class ExthType {
   static const int author = 100;
   static const int publisher = 101;
   static const int imprint = 102;

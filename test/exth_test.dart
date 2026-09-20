@@ -249,4 +249,50 @@ void main() {
       );
     });
   });
+
+  group('ExthHeader — remaining typed accessors', () {
+    test('exposes imprint, isbn, dates, rights, contributors and cdeType',
+        () {
+      final bytes = _buildExth([
+        (ExthType.imprint, utf8.encode('Tor Books')),
+        (ExthType.isbn, utf8.encode('978-0-316-12908-4')),
+        (ExthType.publishedDate, utf8.encode('2011-06-15')),
+        (ExthType.rights, utf8.encode('Public domain in the USA.')),
+        (ExthType.contributor, utf8.encode('calibre (5.12.0)')),
+        (ExthType.contributor, utf8.encode('kindlegen')),
+        (ExthType.cdeType, utf8.encode('EBOK')),
+      ]);
+      final exth = ExthHeader.parse(bytes, offset: 0, textEncoding: 65001);
+
+      expect(exth.imprint, 'Tor Books');
+      expect(exth.isbn, '978-0-316-12908-4');
+      expect(exth.publishedDate, '2011-06-15');
+      expect(exth.rights, 'Public domain in the USA.');
+      expect(exth.contributors, ['calibre (5.12.0)', 'kindlegen']);
+      expect(exth.cdeType, 'EBOK');
+    });
+
+    test('returns null / empty for absent records', () {
+      final exth = ExthHeader.parse(
+        _buildExth([(ExthType.author, utf8.encode('A'))]),
+        offset: 0,
+        textEncoding: 65001,
+      );
+      expect(exth.imprint, isNull);
+      expect(exth.isbn, isNull);
+      expect(exth.publishedDate, isNull);
+      expect(exth.rights, isNull);
+      expect(exth.cdeType, isNull);
+      expect(exth.contributors, isEmpty);
+    });
+
+    test('ExthRecord.length reports the payload size', () {
+      final exth = ExthHeader.parse(
+        _buildExth([(ExthType.author, utf8.encode('Ada'))]),
+        offset: 0,
+        textEncoding: 65001,
+      );
+      expect(exth.records.single.length, 3);
+    });
+  });
 }

@@ -109,4 +109,16 @@ void main() {
       expect(flows.flows.single.kind, FlowKind.other);
     });
   });
+
+  group('FlowKind detection — XML-declared HTML', () {
+    test('classifies an XML prolog followed by <head> as html', () {
+      // No <html> tag in the sniffed window, but the XML declaration
+      // plus a <head> is enough to call it markup rather than "other".
+      const doc = '<?xml version="1.0" encoding="utf-8"?>\n'
+          '<head><title>t</title></head>';
+      final rawML = _u8(doc.codeUnits);
+      final flows = BookFlows.split(rawML, _fdst([(0, rawML.length)]));
+      expect(flows.flows.single.kind, FlowKind.html);
+    });
+  });
 }

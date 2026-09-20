@@ -17,6 +17,18 @@
 - Swap the dev-only `epubx` strict-reader roundtrip test over to
   `epub_plus` ^5.1.0. `epubx` was last published in 2023 and pins
   `archive` ^3.1.6, which is what blocked the upgrade.
+- Raise line coverage from 90.1% to 100% (179 → 236 tests). The new
+  tests are mostly malformed-input cases for the INDX, HUFF/CDIC, FONT,
+  RESC and XHTML-splice parsers, plus the first end-to-end tests of
+  `KindleBook.fromBytes` itself: Mobi-7 single-part output, the title
+  fallback to the MOBI full name, embedded-font extraction, and the
+  graceful degradation path for KF8 files that carry no skeleton or
+  fragment tables.
+- Make `EpubBuilder`, `ExthType` and `XhtmlSplitter` `abstract final
+  class` instead of hiding a private constructor. These have only ever
+  held statics, and the modern idiom says so directly. Consumers could
+  not construct or subclass them before either, so nothing changes at
+  the call site.
 
 ## 0.1.1
 

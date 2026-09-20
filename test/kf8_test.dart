@@ -248,4 +248,29 @@ void main() {
       expect(kf.format, KindleFormat.mobi7Only);
     });
   });
+
+  group('KindleFile.inspect — edge cases', () {
+    test('throws when the PDB holds no records at all', () {
+      expect(
+        () => KindleFile.inspect(_wrap([])),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+
+    test('parses the KF8 section EXTH when the KF8 record 0 carries one', () {
+      final pdb = _wrap([
+        _buildRecord0(fileVersion: 6, exth121: 3),
+        _u8([0xFF]),
+        _u8('BOUNDARY'.codeUnits),
+        // KF8 record 0 with its own EXTH block — the combo path has to
+        // read it from the KF8 header, not reuse the Mobi-7 one.
+        _buildRecord0(fileVersion: 8, exthPresent: true),
+        _u8([0xFF]),
+      ]);
+      final kf = KindleFile.inspect(pdb);
+      expect(kf.format, KindleFormat.combo);
+      expect(kf.kf8?.exth, isNotNull);
+      expect(kf.kf8?.mobi.hasExth, isTrue);
+    });
+  });
 }
