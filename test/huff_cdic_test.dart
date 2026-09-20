@@ -268,6 +268,189 @@ void main() {
       expect(String.fromCharCodes(out), 'B' * 15);
     });
   });
+
+  group('HuffTable.parse — malformed records', () {
+    test('throws on a record too short for the fixed header', () {
+      expect(
+        () => HuffTable.parse(Uint8List(16)),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws when the mincode/maxcode table extends past the record', () {
+      final bytes = _build1BitHuff();
+      ByteData.sublistView(bytes).setUint32(12, bytes.length - 4);
+      expect(
+        () => HuffTable.parse(bytes),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws on a short codeword marked non-terminal', () {
+      final bytes = _build1BitHuff();
+      // codeLen 1 with the terminal bit cleared is contradictory: any
+      // code of 8 bits or fewer must resolve straight out of the cache.
+      ByteData.sublistView(bytes).setUint32(24, 0x101);
+      expect(
+        () => HuffTable.parse(bytes),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+  });
+
+  group('CdicTable.parse — malformed records', () {
+    test('throws on an empty record list', () {
+      expect(
+        () => CdicTable.parse(const []),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws on a record too short for the fixed header', () {
+      expect(
+        () => CdicTable.parse([Uint8List(8)]),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws on an unsupported header length', () {
+      final rec = _buildCdic([
+        [0x41]
+      ], bits: 1);
+      ByteData.sublistView(rec).setUint32(4, 0x20);
+      expect(
+        () => CdicTable.parse([rec]),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws when a later record disagrees with the first header', () {
+      final first = _buildCdic([
+        [0x41],
+        [0x42],
+      ], bits: 1, totalPhraseCountOverride: 4);
+      final second = _buildCdic([
+        [0x43],
+        [0x44],
+      ], bits: 1, totalPhraseCountOverride: 5);
+      expect(
+        () => CdicTable.parse([first, second]),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws when the offset table runs past the record end', () {
+      // Header declares 16 phrases at 4 bits/record, so the reader wants
+      // a 32-byte offset table, but only 2 body bytes are present.
+      final rec = Uint8List(18);
+      rec[0] = 'C'.codeUnitAt(0);
+      rec[1] = 'D'.codeUnitAt(0);
+      rec[2] = 'I'.codeUnitAt(0);
+      rec[3] = 'C'.codeUnitAt(0);
+      ByteData.sublistView(rec)
+        ..setUint32(4, 0x10)
+        ..setUint32(8, 16)
+        ..setUint32(12, 4);
+      expect(
+        () => CdicTable.parse([rec]),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws when an entry payload runs past the record end', () {
+      final rec = _buildCdic([
+        [0x41]
+      ], bits: 1);
+      // Entry 0 sits at body offset 2; inflate its declared length.
+      ByteData.sublistView(rec).setUint16(16 + 2, 0x8000 | 100);
+      expect(
+        () => CdicTable.parse([rec]),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws when the filled entry count misses the advertised total',
+        () {
+      final rec = _buildCdic([
+        [0x41],
+        [0x42],
+      ], bits: 1, totalPhraseCountOverride: 3);
+      expect(
+        () => CdicTable.parse([rec]),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+  });
+
+  group('decompressHuffCdic — malformed streams', () {
+    test('throws when a codeword never resolves within 32 bits', () {
+      // Every cache slot is non-terminal with codeLen 9, and every
+      // mincode is above the incoming code, so the widening loop walks
+      // past 32 bits without ever matching.
+      final bytes = _build1BitHuff();
+      final view = ByteData.sublistView(bytes);
+      for (var i = 0; i < 256; i++) {
+        view.setUint32(24 + i * 4, 0x09); // codeLen 9, terminal bit clear
+      }
+      for (var i = 1; i <= 32; i++) {
+        view.setUint32(24 + 1024 + (i - 1) * 8, 1); // mincode
+      }
+      final huff = HuffTable.parse(bytes);
+      final cdic = CdicTable.parse([
+        _buildCdic([
+          [0x41],
+          [0x42],
+        ], bits: 1)
+      ]);
+      expect(
+        () => decompressHuffCdic(
+          input: _u8([0x00]),
+          huff: huff,
+          cdic: cdic,
+        ),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws when a codeword resolves outside the dictionary', () {
+      // A zero bit resolves to dictionary index 1, but the dictionary
+      // only holds index 0.
+      final huff = HuffTable.parse(_build1BitHuff());
+      final cdic = CdicTable.parse([
+        _buildCdic([
+          [0x41]
+        ], bits: 1)
+      ]);
+      expect(
+        () => decompressHuffCdic(
+          input: _u8([0x00]),
+          huff: huff,
+          cdic: cdic,
+        ),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+
+    test('throws on a self-referential (cyclic) dictionary entry', () {
+      // Entry 0 is non-precoded and its payload decodes straight back to
+      // entry 0, which would otherwise recurse forever.
+      final huff = HuffTable.parse(_build1BitHuff());
+      final cdic = CdicTable.parse([
+        _buildCdicMixed([
+          (bytes: const [0xFF], precoded: false),
+          (bytes: const [0x41], precoded: true),
+        ])
+      ]);
+      expect(
+        () => decompressHuffCdic(
+          input: _u8([0xFF]),
+          huff: huff,
+          cdic: cdic,
+        ),
+        throwsA(isA<HuffCdicException>()),
+      );
+    });
+  });
 }
 
 /// Variant builder that lets each entry choose the precoded flag.

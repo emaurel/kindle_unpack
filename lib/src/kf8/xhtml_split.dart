@@ -36,9 +36,7 @@ class XhtmlPart {
 /// 3. The boundary heuristic from KindleUnpack handles malformed KF8
 ///    files where Kindlegen's splice point landed inside a tag — we
 ///    nudge the position to the nearest tag boundary.
-class XhtmlSplitter {
-  XhtmlSplitter._();
-
+abstract final class XhtmlSplitter {
   static List<XhtmlPart> split({
     required Uint8List primaryFlow,
     required SkeletonTable skeletons,

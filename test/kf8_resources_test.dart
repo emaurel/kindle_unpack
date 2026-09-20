@@ -223,4 +223,44 @@ void main() {
       );
     });
   });
+
+  group('FontResource.parse — malformed records', () {
+    test('throws on a record too short for the header', () {
+      expect(
+        () => FontResource.parse(Uint8List(20)),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+
+    test('throws when the data offset is past the record end', () {
+      final rec = _buildFont(font: _u8([0x00, 0x01, 0x00, 0x00, 0xAA]));
+      ByteData.sublistView(rec).setUint32(12, rec.length + 1);
+      expect(
+        () => FontResource.parse(rec),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+
+    test('throws when the XOR key extends past the record end', () {
+      final rec = _buildFont(
+        font: _u8([0x00, 0x01, 0x00, 0x00, 0xAA]),
+        obfuscated: true,
+        xorKey: _u8([0x5A, 0xA5]),
+      );
+      ByteData.sublistView(rec).setUint32(16, rec.length);
+      expect(
+        () => FontResource.parse(rec),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+  });
+
+  group('RescResource.parse — malformed records', () {
+    test('throws on a record too short to hold the signature', () {
+      expect(
+        () => RescResource.parse(Uint8List(2)),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+  });
 }

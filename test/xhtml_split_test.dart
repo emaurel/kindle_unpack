@@ -186,4 +186,72 @@ void main() {
       );
     });
   });
+
+  group('XhtmlSplitter.split — malformed tables', () {
+    test('throws when a fragment extends past the primary flow', () {
+      // Skeleton uses the whole flow, so there are no bytes left for the
+      // fragment the table still claims.
+      final flow = _u8('<x></x>'.codeUnits);
+      const skeletons = SkeletonTable(entries: [
+        SkeletonEntry(
+          fileNumber: 0,
+          name: 'SKEL0000',
+          fragmentCount: 1,
+          start: 0,
+          length: 7,
+        ),
+      ]);
+      const fragments = FragmentTable(entries: [
+        FragmentEntry(
+          insertPosition: 3,
+          idText: "P-//*[@aid='0']",
+          fileNumber: 0,
+          sequenceNumber: 0,
+          start: 0,
+          length: 5,
+        ),
+      ]);
+      expect(
+        () => XhtmlSplitter.split(
+          primaryFlow: flow,
+          skeletons: skeletons,
+          fragments: fragments,
+        ),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+
+    test('throws when a fragment insert position falls outside the skeleton',
+        () {
+      final flow = _u8('<x></x>HELLO'.codeUnits);
+      const skeletons = SkeletonTable(entries: [
+        SkeletonEntry(
+          fileNumber: 0,
+          name: 'SKEL0000',
+          fragmentCount: 1,
+          start: 0,
+          length: 7,
+        ),
+      ]);
+      const fragments = FragmentTable(entries: [
+        FragmentEntry(
+          // Way past the 7-byte skeleton.
+          insertPosition: 99,
+          idText: "P-//*[@aid='0']",
+          fileNumber: 0,
+          sequenceNumber: 0,
+          start: 0,
+          length: 5,
+        ),
+      ]);
+      expect(
+        () => XhtmlSplitter.split(
+          primaryFlow: flow,
+          skeletons: skeletons,
+          fragments: fragments,
+        ),
+        throwsA(isA<HeaderException>()),
+      );
+    });
+  });
 }

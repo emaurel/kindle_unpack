@@ -258,4 +258,25 @@ void main() {
       );
     });
   });
+
+  group('KindleUnpackException', () {
+    test('toString names the concrete subtype and the message', () {
+      // Every parser exception inherits this, so callers logging a bare
+      // exception still get something that identifies the stage.
+      final e = _thrownBy(() => PdbFile.parse(Uint8List(10)));
+      expect(e, isA<KindleUnpackException>());
+      expect(e.toString(), startsWith('$PdbException: '));
+      expect(e.toString(), contains((e as KindleUnpackException).message));
+    });
+  });
+}
+
+/// Run [body] and return the exception it throws.
+Object _thrownBy(void Function() body) {
+  try {
+    body();
+  } catch (e) {
+    return e;
+  }
+  throw StateError('expected $body to throw');
 }

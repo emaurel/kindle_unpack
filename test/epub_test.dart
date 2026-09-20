@@ -120,4 +120,89 @@ void main() {
       );
     });
   });
+
+  group('EpubBuilder.build — fonts and image media types', () {
+    const metadata = EpubMetadata(
+      identifier: 'urn:test:fonts',
+      title: 'Sample',
+      language: 'en',
+    );
+    final parts = [
+      XhtmlPart(fileNumber: 0, bytes: _u8('<html>hi</html>'.codeUnits)),
+    ];
+
+    test('writes font files and declares them in the manifest', () {
+      final epub = EpubBuilder.build(
+        metadata: metadata,
+        parts: parts,
+        fonts: [
+          EpubAsset(
+            name: 'font0000.otf',
+            bytes: _u8('OTTO'.codeUnits),
+            mediaType: 'application/vnd.ms-opentype',
+          ),
+          // No mediaType — the manifest must fall back to a generic one
+          // rather than emitting an empty attribute.
+          EpubAsset(name: 'font0001.dat', bytes: _u8([0x00, 0x01])),
+        ],
+      );
+      final files = ZipDecoder().decodeBytes(epub).files;
+      expect(files.any((f) => f.name == 'OEBPS/Fonts/font0000.otf'), isTrue);
+      expect(files.any((f) => f.name == 'OEBPS/Fonts/font0001.dat'), isTrue);
+
+      final opf = utf8.decode(
+        files.firstWhere((f) => f.name == 'OEBPS/content.opf').content
+            as List<int>,
+      );
+      expect(
+        opf,
+        contains('href="Fonts/font0000.otf" '
+            'media-type="application/vnd.ms-opentype"'),
+      );
+      expect(
+        opf,
+        contains('href="Fonts/font0001.dat" '
+            'media-type="application/octet-stream"'),
+      );
+    });
+
+    test('maps every image format to its media type', () {
+      const cases = <ImageFormat, String>{
+        ImageFormat.jpeg: 'image/jpeg',
+        ImageFormat.png: 'image/png',
+        ImageFormat.gif: 'image/gif',
+        ImageFormat.bmp: 'image/bmp',
+        ImageFormat.svg: 'image/svg+xml',
+      };
+      final images = <ExtractedImage>[
+        for (final (i, fmt) in cases.keys.indexed)
+          ExtractedImage(
+            blockIndex: i,
+            recordIndex: 100 + i,
+            format: fmt,
+            data: _u8([0x00, 0x01, 0x02, 0x03]),
+          ),
+      ];
+
+      final epub = EpubBuilder.build(
+        metadata: metadata,
+        parts: parts,
+        images: images,
+      );
+      final opf = utf8.decode(
+        ZipDecoder()
+            .decodeBytes(epub)
+            .files
+            .firstWhere((f) => f.name == 'OEBPS/content.opf')
+            .content as List<int>,
+      );
+      for (final entry in cases.entries) {
+        expect(
+          opf,
+          contains('media-type="${entry.value}"'),
+          reason: 'manifest is missing the ${entry.key.name} media type',
+        );
+      }
+    });
+  });
 }
